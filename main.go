@@ -46,7 +46,22 @@ func (g *Game) DrawLasers(screen *ebiten.Image) {
 	}
 }
 
-func (g *Game) PlayerMovement() {
+func (l Laser) IsOffScreen() bool {
+	return l.x < 0 || l.x > 960 || l.y < 0 || l.y > 540 
+}
+
+func (g *Game) CleanLasers() {
+	i := 0
+	for _, v := range g.lasers {
+		if !v.IsOffScreen() {
+			g.lasers[i] = v
+			i++
+		}
+	}
+	g.lasers = g.lasers[:i]
+}
+
+func (g *Game) MovePlayer() {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 		g.player.rad -= 0.1
 		g.player.dirX = math.Sin(g.player.rad)
@@ -85,17 +100,18 @@ func (g *Game) PlayerShoot() {
 
 func (g *Game) Update() error {
 	g.LaserShoot()
-	g.PlayerMovement()
+	g.MoveLasers()
+	g.CleanLasers()
+	g.MovePlayer()
 	g.PlayerShoot()
-	// if len(g.lasers) > 0 {
-	// 	g.lasers[0].Update()
-	// }
 
-	
+	return nil
+}
+
+func (g *Game) MoveLasers() {
 	for i, _ := range g.lasers {
 		g.lasers[i].Update()
 	}
-	return nil
 }
 
 func (g *Game) LaserShoot() {
