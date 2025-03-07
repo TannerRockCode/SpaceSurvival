@@ -5,14 +5,27 @@ import (
 	"image/color"
 	"log"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
+const (
+	screenWidth = 960
+	screenHeight = 540
+	asteroidSpeed = 0.9
+) 
+
+
+//var startTime = time.Now()
+var lastEnemySpawn = time.Now()
+
 type Game struct{
 	player Player
 	lasers []Laser
+	asteroids []Asteroid
 }
 
 type Laser struct{
@@ -24,6 +37,16 @@ type Laser struct{
 	beam *ebiten.Image
 	width int
 	height int
+}
+
+type Asteroid struct{
+	x float64
+	y float64
+	dirX float64
+	dirY float64
+	sprite *ebiten.Image
+	width int
+	height int 
 }
 
 func (l *Laser) createBeam() {
@@ -46,8 +69,21 @@ func (g *Game) DrawLasers(screen *ebiten.Image) {
 	}
 }
 
+func (a *Asteroid) Draw(screen *ebiten.Image) {
+	geo := ebiten.GeoM{}
+	geo.Translate(a.x, a.y)
+	op := &ebiten.DrawImageOptions{GeoM:geo}
+	screen.DrawImage(a.sprite, op)
+}
+
+func (g *Game) DrawAsteroids(screen *ebiten.Image) {
+	for _, a := range g.asteroids {
+		a.Draw(screen)
+	}
+}
+
 func (l Laser) IsOffScreen() bool {
-	return l.x < 0 || l.x > 960 || l.y < 0 || l.y > 540 
+	return l.x < 0 || l.x > float64(screenWidth) || l.y < 0 || l.y > float64(screenHeight) 
 }
 
 func (g *Game) CleanLasers() {
@@ -104,8 +140,67 @@ func (g *Game) Update() error {
 	g.CleanLasers()
 	g.MovePlayer()
 	g.PlayerShoot()
+	g.SpawnAsteroid()
+	g.MoveAsteroids()
 
 	return nil
+}
+
+func (g *Game) SpawnAsteroid() {
+	if time.Since(lastEnemySpawn) > 1 * time.Second {
+		lastEnemySpawn = time.Now()
+		//random border location
+		xLocation := 0
+		yLocation := 0
+
+		isOnYAxis := rand.Intn(2) == 1
+		if isOnYAxis {
+			isXMin := rand.Intn(2) == 1
+			if isXMin {
+				xLocation = 0
+			} else {
+				xLocation = screenWidth
+			}
+			yLocation = rand.Intn(screenHeight + 1)
+		} else {
+			isYMin := rand.Intn(2) == 1
+			if isYMin {
+				yLocation = 0
+			} else {
+				yLocation = screenHeight
+			}
+			xLocation = rand.Intn(screenWidth + 1)
+		}
+		
+		playerXDist := (g.player.x - float64(xLocation))
+		playerYDist := (g.player.y - float64(yLocation)) 
+		asteroidDividend := (playerXDist + playerYDist) / asteroidSpeed
+		asteroidWidth := rand.Intn(40) + 10
+		asteroidHeight := rand.Intn(40) + 10
+
+		asteroid := Asteroid{
+			x: float64(xLocation), 
+			y: float64(yLocation), 
+			dirX: (playerXDist / asteroidDividend), 
+			dirY: (playerYDist / asteroidDividend), 
+			sprite: ebiten.NewImage(asteroidWidth, asteroidHeight),
+			width: asteroidWidth,
+			height: asteroidHeight,
+		}
+		asteroid.sprite.Fill(color.RGBA{177, 10, 75, 255})
+		g.asteroids = append(g.asteroids, asteroid)
+	}
+}
+
+func (g *Game) MoveAsteroids() {
+	for i, _ := range g.asteroids {
+		g.asteroids[i].Update()
+	}
+}
+
+func (a *Asteroid) Update() {
+	a.x += a.dirX
+	a.y += a.dirY
 }
 
 func (g *Game) MoveLasers() {
@@ -132,27 +227,15 @@ func (l *Laser) Update() {
 	
 }
 
-func (g *Game) Draw(screen *ebiten.Image) {
-	firstLaser := Laser {
-		x : 0,
-		y : 0,
-		rad : 0,
-		dirX : 0,
-		dirY : 0,
-		width : 0,
-		height : 0,
-	}
-	if len(g.lasers) > 0 {
-		firstLaser = g.lasers[0];	
-	} 
-	
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("Ticks Per Second: %0.2f. x: %f y: %f", ebiten.ActualTPS(), firstLaser.x, firstLaser.y))
+func (g *Game) Draw(screen *ebiten.Image) {	
+	ebitenutil.DebugPrint(screen, fmt.Sprintf("Ticks Per Second: %0.2f", ebiten.ActualTPS()))
 	g.player.Draw(screen)
 	g.DrawLasers(screen)
+	g.DrawAsteroids(screen)
 }
 
-func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 960, 540
+func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
+	return screenWidth, screenHeight
 }
 
 func main() {
@@ -166,12 +249,13 @@ func main() {
 		x : 475,
 		y : 265,
 	}
-	lasers := make([]Laser, 0, 10)
+	lasers := make([]Laser, 0, 500)
+	asteroids := make([]Asteroid, 0, 25)
 	player.createCharacter()
 	player.character.Fill(color.White)
 	ebiten.SetVsyncEnabled(true)
 	ebiten.SetTPS(ebiten.SyncWithFPS)
-	if err := ebiten.RunGame(&Game{player, lasers}); err != nil {
+	if err := ebiten.RunGame(&Game{player, lasers, asteroids}); err != nil {
 		log.Fatal(err)
 	}
 
