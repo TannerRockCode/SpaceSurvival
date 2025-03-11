@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -20,7 +21,8 @@ const (
 	collisionGridSize = 5
 )
 
-// var startTime = time.Now()
+var logger *log.Logger
+
 var lastEnemySpawn = time.Now()
 
 type Game struct {
@@ -171,11 +173,11 @@ type Collidable interface {
 }
 
 func (l Laser) GetBounds() image.Rectangle {
-	return l.beam.Bounds()
+	return image.Rect(int(l.x), int(l.y), int(l.x+float64(l.width)), int(l.y+float64(l.height)))
 }
 
 func (a Asteroid) GetBounds() image.Rectangle {
-	return a.sprite.Bounds()
+	return image.Rect(int(a.x), int(a.y), int(a.x+float64(a.width)), int(a.y+float64(a.height)))
 }
 
 func detectCollision(c1, c2 Collidable) bool {
@@ -184,12 +186,15 @@ func detectCollision(c1, c2 Collidable) bool {
 	return b1.Overlaps(b2)
 }
 
-func (l Laser) HandleCollision(c Collidable) {
-	l.usedUp = true
+func (l *Laser) HandleCollision(c Collidable) {
+	_, ok := c.(*Asteroid)
+	if ok {
+		l.usedUp = true
+	}
 }
 
 func (a *Asteroid) HandleCollision(c Collidable) {
-	_, ok := c.(Laser)
+	_, ok := c.(*Laser)
 	if ok {
 		a.sprite.Fill(color.RGBA{50, 0, 0, 255})
 	}
@@ -203,7 +208,7 @@ func (a *Asteroid) HandleCollision(c Collidable) {
 //c.detectCollision(c2)
 
 func (g *Game) Update() error {
-	g.collisionMap.Clear()
+	g.clearCollisionMap()
 	g.LaserShoot()
 	g.MoveLasers()
 	g.MoveAsteroids()
@@ -218,6 +223,12 @@ func (g *Game) Update() error {
 	return nil
 }
 
+func (g *Game) clearCollisionMap() {
+	for i := range g.collisionMap.grid {
+		g.collisionMap.grid[i] = make([]Collidable, 0, 100)
+	}
+}
+
 func (g *Game) registerCollidables() {
 	for i := range g.asteroids {
 		g.registerWithCollisionMap(&g.asteroids[i])
@@ -228,12 +239,24 @@ func (g *Game) registerCollidables() {
 }
 
 func (g *Game) handleCollisions() {
-	for _, v := range g.collisionMap.grid {
-		for i, c1 := range v {
-			for _, c2 := range v[i+1:] {
-				if detectCollision(c1, c2) {
-					c1.HandleCollision(c2)
-					c2.HandleCollision(c1)
+	for i := range g.collisionMap.grid {
+		for j := range g.collisionMap.grid[i] {
+			if len(g.collisionMap.grid[i]) == 1 {
+				break
+			}
+			for k := range g.collisionMap.grid[i] {
+				if g.collisionMap.grid[i][j] == nil {
+					logger.Panic("CollisionMap grid value at j is nil")
+					break
+				}
+				if g.collisionMap.grid[i][k] == nil {
+					logger.Panic("CollisionMap grid value at k is nil")
+					break
+				}
+
+				if detectCollision(g.collisionMap.grid[i][j], g.collisionMap.grid[i][k]) {
+					g.collisionMap.grid[i][j].HandleCollision(g.collisionMap.grid[i][k])
+					g.collisionMap.grid[i][k].HandleCollision(g.collisionMap.grid[i][j])
 				}
 			}
 		}
@@ -287,7 +310,7 @@ func (g *Game) SpawnAsteroid() {
 }
 
 func (g *Game) MoveAsteroids() {
-	for i, _ := range g.asteroids {
+	for i := range g.asteroids {
 		g.asteroids[i].Update()
 	}
 }
@@ -298,7 +321,7 @@ func (a *Asteroid) Update() {
 }
 
 func (g *Game) MoveLasers() {
-	for i, _ := range g.lasers {
+	for i := range g.lasers {
 		g.lasers[i].Update()
 	}
 }
@@ -347,7 +370,12 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
 }
 
 func main() {
-	fmt.Printf("I am drawing!")
+	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	logger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ebiten.SetWindowSize(1920, 1080)
 	player := Player{
 		height: 10,
