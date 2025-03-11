@@ -4,15 +4,15 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-type Player struct{
+type Player struct {
 	character *ebiten.Image
-	rad float64
-	x float64
-	y float64
-	dirX float64
-	dirY float64
-	height int
-	width int
+	rad       float64
+	x         float64
+	y         float64
+	dirX      float64
+	dirY      float64
+	height    int
+	width     int
 }
 
 func (p *Player) createCharacter() {
@@ -25,6 +25,6 @@ func (p *Player) Draw(screen *ebiten.Image) {
 	geo.Rotate(p.rad)
 
 	geo.Translate(p.x, p.y)
-	op := &ebiten.DrawImageOptions{GeoM:geo}
+	op := &ebiten.DrawImageOptions{GeoM: geo}
 	screen.DrawImage(p.character, op)
 }

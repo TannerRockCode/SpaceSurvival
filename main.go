@@ -174,24 +174,24 @@ type Collidable interface {
 
 func (l Laser) GetBounds() image.Rectangle {
 	// Create a GeoM transformation matrix
-    geo := ebiten.GeoM{}
-    geo.Translate(-float64(l.width)/2, -float64(l.height)/2)
-    geo.Rotate(l.rad)
-    geo.Translate(l.x, l.y)
+	geo := ebiten.GeoM{}
+	geo.Translate(-float64(l.width)/2, -float64(l.height)/2)
+	geo.Rotate(l.rad)
+	geo.Translate(l.x, l.y)
 
 	// Get the transformed corners of the laser
-    x0, y0 := geo.Apply(0, 0)
-    x1, y1 := geo.Apply(float64(l.width), 0)
-    x2, y2 := geo.Apply(0, float64(l.height))
-    x3, y3 := geo.Apply(float64(l.width), float64(l.height))
+	x0, y0 := geo.Apply(0, 0)
+	x1, y1 := geo.Apply(float64(l.width), 0)
+	x2, y2 := geo.Apply(0, float64(l.height))
+	x3, y3 := geo.Apply(float64(l.width), float64(l.height))
 
-    // Find the bounding box that contains all the transformed points
-    minX := math.Min(math.Min(x0, x1), math.Min(x2, x3))
-    maxX := math.Max(math.Max(x0, x1), math.Max(x2, x3))
-    minY := math.Min(math.Min(y0, y1), math.Min(y2, y3))
-    maxY := math.Max(math.Max(y0, y1), math.Max(y2, y3))
+	// Find the bounding box that contains all the transformed points
+	minX := math.Min(math.Min(x0, x1), math.Min(x2, x3))
+	maxX := math.Max(math.Max(x0, x1), math.Max(x2, x3))
+	minY := math.Min(math.Min(y0, y1), math.Min(y2, y3))
+	maxY := math.Max(math.Max(y0, y1), math.Max(y2, y3))
 
-    return image.Rect(int(minX), int(minY), int(maxX), int(maxY))
+	return image.Rect(int(minX), int(minY), int(maxX), int(maxY))
 }
 
 func (a Asteroid) GetBounds() image.Rectangle {
@@ -309,7 +309,7 @@ func (g *Game) SpawnAsteroid() {
 
 		playerXDist := (g.player.x - float64(xLocation))
 		playerYDist := (g.player.y - float64(yLocation))
-		asteroidDividend := (playerXDist + playerYDist) / asteroidSpeed
+		asteroidDividend := math.Abs(playerXDist) + math.Abs(playerYDist)/asteroidSpeed
 		asteroidWidth := rand.Intn(40) + 10
 		asteroidHeight := rand.Intn(40) + 10
 
