@@ -207,22 +207,37 @@ func (g *Game) Update() error {
 	g.LaserShoot()
 	g.MoveLasers()
 	g.MoveAsteroids()
-	asteroidCollidables := make([]Collidable, len(g.asteroids))
-	for i := range g.asteroids {
-		asteroidCollidables[i] = &g.asteroids[i]
-	}
-	laserCollidables := make([]Collidable, len(g.lasers))
-	for i := range g.lasers {
-		laserCollidables[i] = &g.lasers[i]
-	}
-	g.registerCollidables(append(asteroidCollidables, laserCollidables...))
-	g.CleanLasers()
+	g.registerCollidables()
+	g.handleCollisions()
 	g.MovePlayer()
 	g.PlayerShoot()
 	g.SpawnAsteroid()
+	g.CleanLasers()
 	g.CleanAsteroids()
 
 	return nil
+}
+
+func (g *Game) registerCollidables() {
+	for i := range g.asteroids {
+		g.registerWithCollisionMap(&g.asteroids[i])
+	}
+	for i := range g.lasers {
+		g.registerWithCollisionMap(&g.lasers[i])
+	}
+}
+
+func (g *Game) handleCollisions() {
+	for _, v := range g.collisionMap.grid {
+		for i, c1 := range v {
+			for _, c2 := range v[i+1:] {
+				if detectCollision(c1, c2) {
+					c1.HandleCollision(c2)
+					c2.HandleCollision(c1)
+				}
+			}
+		}
+	}
 }
 
 func (g *Game) SpawnAsteroid() {
@@ -304,11 +319,7 @@ func (l *Laser) Update() {
 	l.x += l.dirX
 	l.y -= l.dirY
 }
-func (g *Game) registerCollidables(c []Collidable) {
-	for i := range c {
-		g.registerWithCollisionMap(c[i])
-	}
-}
+
 func (g *Game) registerWithCollisionMap(c Collidable) {
 	// width is 7
 	b := c.GetBounds()
