@@ -19,7 +19,7 @@ const (
 	screenWidth       = 960
 	screenHeight      = 540
 	asteroidSpeed     = 0.9
-	collisionGridSize = 5
+	collisionGridSize = 50
 )
 
 var logger *log.Logger
@@ -200,6 +200,13 @@ func (a Asteroid) GetBounds() image.Rectangle {
 }
 
 func detectCollision(c1, c2 Collidable) bool {
+	_, ok := c1.(*Laser)
+	if ok {
+		_, ok := c2.(*Laser)
+		if ok {
+			return false
+		}
+	}
 	b1 := c1.GetBounds()
 	b2 := c2.GetBounds()
 	return b1.Overlaps(b2)
@@ -263,6 +270,7 @@ func (g *Game) handleCollisions() {
 			if len(g.collisionMap.grid[i]) == 1 {
 				break
 			}
+			//TODO: speed up
 			for k := range g.collisionMap.grid[i] {
 				if g.collisionMap.grid[i][j] == nil {
 					logger.Panic("CollisionMap grid value at j is nil")
@@ -396,7 +404,7 @@ func main() {
 	defer profile.Close()
 	pprof.StartCPUProfile(profile)
 	defer pprof.StopCPUProfile()
-	
+
 	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatal(err)
