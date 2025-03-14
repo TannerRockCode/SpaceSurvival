@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -388,6 +389,14 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
 }
 
 func main() {
+	profile, err := os.Create("spacesurvival.prof")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer profile.Close()
+	pprof.StartCPUProfile(profile)
+	defer pprof.StopCPUProfile()
+	
 	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatal(err)
