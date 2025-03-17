@@ -8,9 +8,9 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"runtime/pprof"
 	"time"
 
+	//"runtime/pprof"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -19,6 +19,7 @@ const (
 	screenWidth       = 960
 	screenHeight      = 540
 	asteroidSpeed     = 0.9
+	crystalAcceleration = 0.3
 	collisionGridSize = 50
 )
 
@@ -30,6 +31,7 @@ type Game struct {
 	player       Player
 	lasers       []Laser
 	asteroids    []Asteroid
+	crystals     []Crystal
 	collisionMap CollisionMap
 }
 
@@ -57,6 +59,18 @@ type Asteroid struct {
 	sprite *ebiten.Image
 	width  int
 	height int
+	destroyed bool
+}
+
+type Crystal struct {
+	x      float64
+	y      float64
+	dirX   float64
+	dirY   float64
+	sprite *ebiten.Image
+	width  int
+	height int
+	absorbed bool
 }
 
 func (c *CollisionMap) Clear() {
@@ -98,6 +112,19 @@ func (g *Game) DrawAsteroids(screen *ebiten.Image) {
 	}
 }
 
+func (c *Crystal) Draw(screen *ebiten.Image) {
+	geo := ebiten.GeoM{}
+	geo.Translate(c.x, c.y)
+	op := &ebiten.DrawImageOptions{GeoM: geo}
+	screen.DrawImage(c.sprite, op)
+}
+
+func (g *Game) DrawCrystals(screen *ebiten.Image) {
+	for _, c := range g.crystals {
+		c.Draw(screen)
+	}
+}
+
 func (l Laser) IsOffScreen() bool {
 	return l.x < 0 || l.x > float64(screenWidth) || l.y < 0 || l.y > float64(screenHeight)
 }
@@ -120,7 +147,7 @@ func (a Asteroid) IsOffScreen() bool {
 func (g *Game) CleanAsteroids() {
 	i := 0
 	for _, a := range g.asteroids {
-		if !a.IsOffScreen() {
+		if !a.IsOffScreen() && !a.destroyed {
 			g.asteroids[i] = a
 			i++
 		}
@@ -220,9 +247,11 @@ func (l *Laser) HandleCollision(c Collidable) {
 }
 
 func (a *Asteroid) HandleCollision(c Collidable) {
-	_, ok := c.(*Laser)
+	l, ok := c.(*Laser)
 	if ok {
-		a.sprite.Fill(color.RGBA{50, 0, 0, 255})
+		a.dirX = l.dirX
+		a.dirY = l.dirY
+		a.destroyed = true
 	}
 }
 
@@ -238,11 +267,14 @@ func (g *Game) Update() error {
 	g.LaserShoot()
 	g.MoveLasers()
 	g.MoveAsteroids()
+	g.MoveCrystals()
 	g.registerCollidables()
 	g.handleCollisions()
+	g.CreateCrystals()
 	g.MovePlayer()
 	g.PlayerShoot()
 	g.SpawnAsteroid()
+
 	g.CleanLasers()
 	g.CleanAsteroids()
 
@@ -266,26 +298,52 @@ func (g *Game) registerCollidables() {
 
 func (g *Game) handleCollisions() {
 	for i := range g.collisionMap.grid {
-		for j := range g.collisionMap.grid[i] {
-			if len(g.collisionMap.grid[i]) == 1 {
-				break
-			}
-			//TODO: speed up
-			for k := range g.collisionMap.grid[i] {
-				if g.collisionMap.grid[i][j] == nil {
-					logger.Panic("CollisionMap grid value at j is nil")
-					break
+		if len(g.collisionMap.grid[i]) <= 1 {
+			continue
+		}
+		collisionSlice := g.collisionMap.grid[i]
+		for j := 0; j < len(collisionSlice); j++ {
+			for k := j + 1; k < len(collisionSlice); k++ {
+				if detectCollision(collisionSlice[j], collisionSlice[k]) {
+					collisionSlice[j].HandleCollision(collisionSlice[k])
+					collisionSlice[k].HandleCollision(collisionSlice[j])                                        
 				}
-				if g.collisionMap.grid[i][k] == nil {
-					logger.Panic("CollisionMap grid value at k is nil")
-					break
+			} 
+		}	
+	}
+}
+
+func (g *Game) CreateCrystals() {
+	for _, a := range g.asteroids {
+		if a.destroyed {
+			numCrystals := a.width * a.height / 100
+			for i := 0; i < numCrystals; i++ {
+				cHeight := 8 + rand.Intn(4) 
+				cWidth := 8 + rand.Intn(4)
+				randDirX := rand.Float64() 
+				randDirY := rand.Float64() 
+				negPosX := rand.Intn(1)
+				negPosY := rand.Intn(1)
+				if negPosX == 0 {
+					randDirX *= -1
+				}
+				if negPosY == 0 {
+					randDirY *= -1
 				}
 
-				if detectCollision(g.collisionMap.grid[i][j], g.collisionMap.grid[i][k]) {
-					g.collisionMap.grid[i][j].HandleCollision(g.collisionMap.grid[i][k])
-					g.collisionMap.grid[i][k].HandleCollision(g.collisionMap.grid[i][j])
+
+				crystal := Crystal {
+					x:     float64(a.x),
+					y:	   float64(a.y),
+					dirX:  a.dirX + randDirX,
+					dirY:  a.dirY + randDirY,
+					sprite: ebiten.NewImage(cWidth, cHeight),
+					width: cWidth,
+					height: cHeight,
 				}
-			}
+				crystal.sprite.Fill(color.RGBA{209, 60, 219, 200})
+				g.crystals = append(g.crystals, crystal)
+			} 
 		}
 	}
 }
@@ -334,6 +392,23 @@ func (g *Game) SpawnAsteroid() {
 		asteroid.sprite.Fill(color.RGBA{177, 10, 75, 255})
 		g.asteroids = append(g.asteroids, asteroid)
 	}
+}
+
+func (g *Game) MoveCrystals() {
+	for i := range g.crystals {
+		g.crystals[i].Update(g.player)
+	}
+}
+
+func (c *Crystal) Update(p Player) {
+	playerXDist := (p.x - float64(c.x))
+	playerYDist := (p.y - float64(c.y))
+	crystalDividend := (math.Abs(playerXDist) + math.Abs(playerYDist)) / crystalAcceleration
+	c.dirX += (playerXDist / crystalDividend)
+	c.dirY += (playerYDist / crystalDividend)
+
+	c.x += c.dirX 
+	c.y += c.dirY
 }
 
 func (g *Game) MoveAsteroids() {
@@ -390,6 +465,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.player.Draw(screen)
 	g.DrawLasers(screen)
 	g.DrawAsteroids(screen)
+	g.DrawCrystals(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
@@ -397,13 +473,13 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
 }
 
 func main() {
-	profile, err := os.Create("spacesurvival.prof")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer profile.Close()
-	pprof.StartCPUProfile(profile)
-	defer pprof.StopCPUProfile()
+	//profile, err := os.Create("spacesurvival.prof")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	//defer profile.Close()
+	//pprof.StartCPUProfile(profile)
+	//defer pprof.StopCPUProfile()
 
 	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -421,7 +497,8 @@ func main() {
 		y:      265,
 	}
 	lasers := make([]Laser, 0, 500)
-	asteroids := make([]Asteroid, 0, 25)
+	asteroids := make([]Asteroid, 0, 50)
+	crystals := make([]Crystal, 0, 250)
 	player.createCharacter()
 	player.character.Fill(color.White)
 	ebiten.SetVsyncEnabled(true)
@@ -435,7 +512,7 @@ func main() {
 		}
 	}
 	//
-	if err := ebiten.RunGame(&Game{player, lasers, asteroids, cMap}); err != nil {
+	if err := ebiten.RunGame(&Game{player, lasers, asteroids, crystals, cMap}); err != nil {
 		log.Fatal(err)
 	}
 
