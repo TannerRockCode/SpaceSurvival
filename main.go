@@ -19,7 +19,7 @@ const (
 	screenWidth         = 960
 	screenHeight        = 540
 	asteroidSpeed       = 0.9
-	crystalAcceleration = 0.3
+	crystalAcceleration = 5
 	collisionGridSize   = 50
 )
 
@@ -274,7 +274,6 @@ func (g *Game) Update() error {
 	g.MovePlayer()
 	g.PlayerShoot()
 	g.SpawnAsteroid()
-
 	g.CleanLasers()
 	g.CleanAsteroids()
 
@@ -320,8 +319,8 @@ func (g *Game) CreateCrystals() {
 			for i := 0; i < numCrystals; i++ {
 				cHeight := 8 + rand.Intn(4)
 				cWidth := 8 + rand.Intn(4)
-				randDirX := rand.Float64()
-				randDirY := rand.Float64()
+				randDirX := rand.Float64() * 10
+				randDirY := rand.Float64() * 10
 				negPosX := rand.Intn(2)
 				negPosY := rand.Intn(2)
 				if negPosX == 0 {
@@ -334,8 +333,8 @@ func (g *Game) CreateCrystals() {
 				crystal := Crystal{
 					x:      float64(a.x),
 					y:      float64(a.y),
-					dirX:   a.dirX + randDirX,
-					dirY:   a.dirY + randDirY,
+					dirX:   a.dirX*20 + randDirX,
+					dirY:   a.dirY*20 + randDirY,
 					sprite: ebiten.NewImage(cWidth, cHeight),
 					width:  cWidth,
 					height: cHeight,
@@ -402,10 +401,11 @@ func (g *Game) MoveCrystals() {
 func (c *Crystal) Update(p Player) {
 	playerXDist := (p.x - float64(c.x))
 	playerYDist := (p.y - float64(c.y))
-	crystalDividend := (math.Abs(playerXDist) + math.Abs(playerYDist)) / crystalAcceleration
-	c.dirX += (playerXDist / crystalDividend)
-	c.dirY += (playerYDist / crystalDividend)
-
+	crystalDividend := math.Abs(playerXDist) + math.Abs(playerYDist)/crystalAcceleration
+	forceX := playerXDist / crystalDividend
+	forceY := playerYDist / crystalDividend
+	c.dirX = c.dirX*.9 + forceX
+	c.dirY = c.dirY*.9 + forceY
 	c.x += c.dirX
 	c.y += c.dirY
 }
@@ -472,13 +472,13 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
 }
 
 func main() {
-	//profile, err := os.Create("spacesurvival.prof")
+	// profile, err := os.Create("spacesurvival.prof")
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
-	//defer profile.Close()
-	//pprof.StartCPUProfile(profile)
-	//defer pprof.StopCPUProfile()
+	// defer profile.Close()
+	// pprof.StartCPUProfile(profile)
+	// defer pprof.StopCPUProfile()
 
 	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
