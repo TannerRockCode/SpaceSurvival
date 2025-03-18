@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	screenWidth       = 960
-	screenHeight      = 540
-	asteroidSpeed     = 0.9
+	screenWidth         = 960
+	screenHeight        = 540
+	asteroidSpeed       = 0.9
 	crystalAcceleration = 0.3
-	collisionGridSize = 50
+	collisionGridSize   = 50
 )
 
 var logger *log.Logger
@@ -52,24 +52,24 @@ type Laser struct {
 }
 
 type Asteroid struct {
-	x      float64
-	y      float64
-	dirX   float64
-	dirY   float64
-	sprite *ebiten.Image
-	width  int
-	height int
+	x         float64
+	y         float64
+	dirX      float64
+	dirY      float64
+	sprite    *ebiten.Image
+	width     int
+	height    int
 	destroyed bool
 }
 
 type Crystal struct {
-	x      float64
-	y      float64
-	dirX   float64
-	dirY   float64
-	sprite *ebiten.Image
-	width  int
-	height int
+	x        float64
+	y        float64
+	dirX     float64
+	dirY     float64
+	sprite   *ebiten.Image
+	width    int
+	height   int
 	absorbed bool
 }
 
@@ -306,10 +306,10 @@ func (g *Game) handleCollisions() {
 			for k := j + 1; k < len(collisionSlice); k++ {
 				if detectCollision(collisionSlice[j], collisionSlice[k]) {
 					collisionSlice[j].HandleCollision(collisionSlice[k])
-					collisionSlice[k].HandleCollision(collisionSlice[j])                                        
+					collisionSlice[k].HandleCollision(collisionSlice[j])
 				}
-			} 
-		}	
+			}
+		}
 	}
 }
 
@@ -318,12 +318,12 @@ func (g *Game) CreateCrystals() {
 		if a.destroyed {
 			numCrystals := a.width * a.height / 100
 			for i := 0; i < numCrystals; i++ {
-				cHeight := 8 + rand.Intn(4) 
+				cHeight := 8 + rand.Intn(4)
 				cWidth := 8 + rand.Intn(4)
-				randDirX := rand.Float64() 
-				randDirY := rand.Float64() 
-				negPosX := rand.Intn(1)
-				negPosY := rand.Intn(1)
+				randDirX := rand.Float64()
+				randDirY := rand.Float64()
+				negPosX := rand.Intn(2)
+				negPosY := rand.Intn(2)
 				if negPosX == 0 {
 					randDirX *= -1
 				}
@@ -331,19 +331,18 @@ func (g *Game) CreateCrystals() {
 					randDirY *= -1
 				}
 
-
-				crystal := Crystal {
-					x:     float64(a.x),
-					y:	   float64(a.y),
-					dirX:  a.dirX + randDirX,
-					dirY:  a.dirY + randDirY,
+				crystal := Crystal{
+					x:      float64(a.x),
+					y:      float64(a.y),
+					dirX:   a.dirX + randDirX,
+					dirY:   a.dirY + randDirY,
 					sprite: ebiten.NewImage(cWidth, cHeight),
-					width: cWidth,
+					width:  cWidth,
 					height: cHeight,
 				}
 				crystal.sprite.Fill(color.RGBA{209, 60, 219, 200})
 				g.crystals = append(g.crystals, crystal)
-			} 
+			}
 		}
 	}
 }
@@ -407,7 +406,7 @@ func (c *Crystal) Update(p Player) {
 	c.dirX += (playerXDist / crystalDividend)
 	c.dirY += (playerYDist / crystalDividend)
 
-	c.x += c.dirX 
+	c.x += c.dirX
 	c.y += c.dirY
 }
 
