@@ -28,6 +28,7 @@ var logger *log.Logger
 var lastEnemySpawn = time.Now()
 
 type Game struct {
+	score        int
 	player       Player
 	lasers       []Laser
 	asteroids    []Asteroid
@@ -153,6 +154,8 @@ func (g *Game) CleanCrystals() {
 		if !c.absorbed {
 			g.crystals[i] = c
 			i++
+		} else {
+			g.score += 1 
 		}
 	}
 	g.crystals = g.crystals[:i]
@@ -353,6 +356,7 @@ func (g *Game) CreateCrystals() {
 						y:      float64(a.sprite.y),
 						dirX:   a.sprite.dirX*20 + randDirX,
 						dirY:   a.sprite.dirY*20 + randDirY,
+						rad:    a.sprite.rad,
 						image:  ebiten.NewImage(cWidth, cHeight),
 						width:  cWidth,
 						height: cHeight,
@@ -403,6 +407,7 @@ func (g *Game) SpawnAsteroid() {
 				y:      float64(yLocation),
 				dirX:   (playerXDist / asteroidDividend),
 				dirY:   (playerYDist / asteroidDividend),
+				rad:    0,
 				image:  ebiten.NewImage(asteroidWidth, asteroidHeight),
 				width:  asteroidWidth,
 				height: asteroidHeight,
@@ -474,6 +479,7 @@ func (g *Game) registerWithCollisionMap(c Collidable) {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	ebitenutil.DebugPrint(screen, fmt.Sprintf("Ticks Per Second: %0.2f", ebiten.ActualTPS()))
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Score: %d", g.score), 10, screenHeight - 30)
 	g.player.Draw(screen)
 	g.DrawLasers(screen)
 	g.DrawAsteroids(screen)
@@ -506,6 +512,7 @@ func main() {
 			width:  10,
 			dirX:   0,
 			dirY:   1,
+			rad:    0,
 			x:      475,
 			y:      265,
 		},
@@ -514,7 +521,7 @@ func main() {
 	asteroids := make([]Asteroid, 0, 50)
 	crystals := make([]Crystal, 0, 250)
 	player.createCharacter()
-	player.character.Fill(color.White)
+	player.sprite.image.Fill(color.White)
 	ebiten.SetVsyncEnabled(true)
 	ebiten.SetTPS(ebiten.SyncWithFPS)
 	cMap := CollisionMap{
@@ -525,7 +532,15 @@ func main() {
 			cMap.grid[fmt.Sprintf("%d:%d", i, j)] = make([]Collidable, 0, 100)
 		}
 	}
-	if err := ebiten.RunGame(&Game{player, lasers, asteroids, crystals, cMap}); err != nil {
+	if err := ebiten.RunGame(&Game{
+		score: 0, 
+		player: player, 
+		lasers: lasers, 
+		asteroids: asteroids, 
+		crystals: crystals, 
+		collisionMap: cMap,
+	}); 
+	err != nil {
 		log.Fatal(err)
 	}
 }

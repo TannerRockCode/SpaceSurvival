@@ -5,7 +5,6 @@ import (
 )
 
 type Player struct {
-	character *ebiten.Image
 	sprite Sprite
 }
 
@@ -20,5 +19,5 @@ func (p *Player) Draw(screen *ebiten.Image) {
 
 	geo.Translate(p.sprite.x, p.sprite.y)
 	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(p.character, op)
+	screen.DrawImage(p.sprite.image, op)
 }
