@@ -155,6 +155,17 @@ func (g *Game) CleanAsteroids() {
 	g.asteroids = g.asteroids[:i]
 }
 
+func (g *Game) CleanCrystals() {
+ i := 0
+ for _, c := range g.crystals {
+	if !c.absorbed {
+		g.crystals[i] = c
+		i++
+	}
+ }
+ g.crystals = g.crystals[:i]
+}
+
 func (g *Game) MovePlayer() {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
 		g.player.rad -= 0.1
@@ -198,6 +209,32 @@ type Collidable interface {
 	//detectCollision(Collidable, Collidable) bool
 	GetBounds() image.Rectangle
 	HandleCollision(Collidable)
+}
+
+func (c Crystal) GetBounds() image.Rectangle {
+	return image.Rect(int(c.x), int(c.y), int(c.x+float64(c.width)), int(c.y+float64(c.height)))
+}
+
+func (p Player) GetBounds() image.Rectangle {
+	// Create a GeoM transformation matrix
+	geo := ebiten.GeoM{}
+	geo.Translate(-float64(p.width)/2, -float64(p.height)/2)
+	geo.Rotate(p.rad)
+	geo.Translate(p.x, p.y)
+
+	// Get the transformed corners of the player
+	x0, y0 := geo.Apply(0, 0)
+	x1, y1 := geo.Apply(float64(p.width), 0)
+	x2, y2 := geo.Apply(0, float64(p.height))
+	x3, y3 := geo.Apply(float64(p.width), float64(p.height))
+
+	// Find the bounding box that contains all the transformed points
+	minX := math.Min(math.Min(x0, x1), math.Min(x2, x3))
+	maxX := math.Max(math.Max(x0, x1), math.Max(x2, x3))
+	minY := math.Min(math.Min(y0, y1), math.Min(y2, y3))
+	maxY := math.Max(math.Max(y0, y1), math.Max(y2, y3))
+
+	return image.Rect(int(minX), int(minY), int(maxX), int(maxY))
 }
 
 func (l Laser) GetBounds() image.Rectangle {
@@ -276,6 +313,7 @@ func (g *Game) Update() error {
 	g.SpawnAsteroid()
 	g.CleanLasers()
 	g.CleanAsteroids()
+	g.CleanCrystals()
 
 	return nil
 }
@@ -408,6 +446,10 @@ func (c *Crystal) Update(p Player) {
 	c.dirY = c.dirY*.9 + forceY
 	c.x += c.dirX
 	c.y += c.dirY
+
+	if c.GetBounds().Overlaps(p.GetBounds()) {
+		c.absorbed = true;
+	}
 }
 
 func (g *Game) MoveAsteroids() {
