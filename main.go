@@ -39,37 +39,29 @@ type CollisionMap struct {
 	grid map[string][]Collidable
 }
 
-type Laser struct {
+type Sprite struct {
 	x      float64
 	y      float64
 	rad    float64
 	dirX   float64
 	dirY   float64
-	beam   *ebiten.Image
+	image   *ebiten.Image
 	width  int
 	height int
+}
+
+type Laser struct {
+	sprite Sprite
 	usedUp bool
 }
 
 type Asteroid struct {
-	x         float64
-	y         float64
-	dirX      float64
-	dirY      float64
-	sprite    *ebiten.Image
-	width     int
-	height    int
+	sprite Sprite
 	destroyed bool
 }
 
 type Crystal struct {
-	x        float64
-	y        float64
-	dirX     float64
-	dirY     float64
-	sprite   *ebiten.Image
-	width    int
-	height   int
+	sprite Sprite
 	absorbed bool
 }
 
@@ -80,17 +72,17 @@ func (c *CollisionMap) Clear() {
 }
 
 func (l *Laser) createBeam() {
-	l.beam = ebiten.NewImage(l.width, l.height)
-	l.beam.Fill(color.RGBA{255, 0, 0, 255})
+	l.sprite.image = ebiten.NewImage(l.sprite.width, l.sprite.height)
+	l.sprite.image.Fill(color.RGBA{255, 0, 0, 255})
 }
 
 func (l *Laser) Draw(screen *ebiten.Image) {
 	geo := ebiten.GeoM{}
-	geo.Translate(-float64(l.width)/2, -float64(l.height)/2)
-	geo.Rotate(l.rad)
-	geo.Translate(l.x, l.y)
+	geo.Translate(-float64(l.sprite.width)/2, -float64(l.sprite.height)/2)
+	geo.Rotate(l.sprite.rad)
+	geo.Translate(l.sprite.x, l.sprite.y)
 	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(l.beam, op)
+	screen.DrawImage(l.sprite.image, op)
 }
 
 func (g *Game) DrawLasers(screen *ebiten.Image) {
@@ -101,9 +93,9 @@ func (g *Game) DrawLasers(screen *ebiten.Image) {
 
 func (a *Asteroid) Draw(screen *ebiten.Image) {
 	geo := ebiten.GeoM{}
-	geo.Translate(a.x, a.y)
+	geo.Translate(a.sprite.x, a.sprite.y)
 	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(a.sprite, op)
+	screen.DrawImage(a.sprite.image, op)
 }
 
 func (g *Game) DrawAsteroids(screen *ebiten.Image) {
@@ -114,9 +106,9 @@ func (g *Game) DrawAsteroids(screen *ebiten.Image) {
 
 func (c *Crystal) Draw(screen *ebiten.Image) {
 	geo := ebiten.GeoM{}
-	geo.Translate(c.x, c.y)
+	geo.Translate(c.sprite.x, c.sprite.y)
 	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(c.sprite, op)
+	screen.DrawImage(c.sprite.image, op)
 }
 
 func (g *Game) DrawCrystals(screen *ebiten.Image) {
@@ -126,7 +118,7 @@ func (g *Game) DrawCrystals(screen *ebiten.Image) {
 }
 
 func (l Laser) IsOffScreen() bool {
-	return l.x < 0 || l.x > float64(screenWidth) || l.y < 0 || l.y > float64(screenHeight)
+	return l.sprite.x < 0 || l.sprite.x > float64(screenWidth) || l.sprite.y < 0 || l.sprite.y > float64(screenHeight)
 }
 
 func (g *Game) CleanLasers() {
@@ -141,7 +133,7 @@ func (g *Game) CleanLasers() {
 }
 
 func (a Asteroid) IsOffScreen() bool {
-	return a.x < 0 || a.x > float64(screenWidth) || a.y < 0 || a.y > float64(screenHeight)
+	return a.sprite.x < 0 || a.sprite.x > float64(screenWidth) || a.sprite.y < 0 || a.sprite.y > float64(screenHeight)
 }
 
 func (g *Game) CleanAsteroids() {
@@ -190,13 +182,15 @@ func (g *Game) MovePlayer() {
 func (g *Game) PlayerShoot() {
 	if ebiten.IsKeyPressed(ebiten.KeySpace) {
 		laser := Laser{
-			x:      g.player.x,
-			y:      g.player.y,
-			rad:    g.player.rad,
-			dirX:   g.player.dirX * 1.3,
-			dirY:   g.player.dirY * 1.3,
-			width:  1,
-			height: 3,
+			sprite : Sprite {
+				x:      g.player.x,
+				y:      g.player.y,
+				rad:    g.player.rad,
+				dirX:   g.player.dirX * 1.3,
+				dirY:   g.player.dirY * 1.3,
+				width:  1,
+				height: 3,
+			},
 			usedUp: false,
 		}
 		laser.createBeam()
@@ -212,7 +206,7 @@ type Collidable interface {
 }
 
 func (c Crystal) GetBounds() image.Rectangle {
-	return image.Rect(int(c.x), int(c.y), int(c.x+float64(c.width)), int(c.y+float64(c.height)))
+	return image.Rect(int(c.sprite.x), int(c.sprite.y), int(c.sprite.x+float64(c.sprite.width)), int(c.sprite.y+float64(c.sprite.height)))
 }
 
 func (p Player) GetBounds() image.Rectangle {
@@ -240,15 +234,15 @@ func (p Player) GetBounds() image.Rectangle {
 func (l Laser) GetBounds() image.Rectangle {
 	// Create a GeoM transformation matrix
 	geo := ebiten.GeoM{}
-	geo.Translate(-float64(l.width)/2, -float64(l.height)/2)
-	geo.Rotate(l.rad)
-	geo.Translate(l.x, l.y)
+	geo.Translate(-float64(l.sprite.width)/2, -float64(l.sprite.height)/2)
+	geo.Rotate(l.sprite.rad)
+	geo.Translate(l.sprite.x, l.sprite.y)
 
 	// Get the transformed corners of the laser
 	x0, y0 := geo.Apply(0, 0)
-	x1, y1 := geo.Apply(float64(l.width), 0)
-	x2, y2 := geo.Apply(0, float64(l.height))
-	x3, y3 := geo.Apply(float64(l.width), float64(l.height))
+	x1, y1 := geo.Apply(float64(l.sprite.width), 0)
+	x2, y2 := geo.Apply(0, float64(l.sprite.height))
+	x3, y3 := geo.Apply(float64(l.sprite.width), float64(l.sprite.height))
 
 	// Find the bounding box that contains all the transformed points
 	minX := math.Min(math.Min(x0, x1), math.Min(x2, x3))
@@ -260,7 +254,7 @@ func (l Laser) GetBounds() image.Rectangle {
 }
 
 func (a Asteroid) GetBounds() image.Rectangle {
-	return image.Rect(int(a.x), int(a.y), int(a.x+float64(a.width)), int(a.y+float64(a.height)))
+	return image.Rect(int(a.sprite.x), int(a.sprite.y), int(a.sprite.x+float64(a.sprite.width)), int(a.sprite.y+float64(a.sprite.height)))
 }
 
 func detectCollision(c1, c2 Collidable) bool {
@@ -286,8 +280,8 @@ func (l *Laser) HandleCollision(c Collidable) {
 func (a *Asteroid) HandleCollision(c Collidable) {
 	l, ok := c.(*Laser)
 	if ok {
-		a.dirX = l.dirX
-		a.dirY = l.dirY
+		a.sprite.dirX = l.sprite.dirX
+		a.sprite.dirY = l.sprite.dirY
 		a.destroyed = true
 	}
 }
@@ -301,7 +295,6 @@ func (a *Asteroid) HandleCollision(c Collidable) {
 
 func (g *Game) Update() error {
 	g.clearCollisionMap()
-	g.LaserShoot()
 	g.MoveLasers()
 	g.MoveAsteroids()
 	g.MoveCrystals()
@@ -353,7 +346,7 @@ func (g *Game) handleCollisions() {
 func (g *Game) CreateCrystals() {
 	for _, a := range g.asteroids {
 		if a.destroyed {
-			numCrystals := a.width * a.height / 100
+			numCrystals := a.sprite.width * a.sprite.height / 100
 			for i := 0; i < numCrystals; i++ {
 				cHeight := 8 + rand.Intn(4)
 				cWidth := 8 + rand.Intn(4)
@@ -369,15 +362,17 @@ func (g *Game) CreateCrystals() {
 				}
 
 				crystal := Crystal{
-					x:      float64(a.x),
-					y:      float64(a.y),
-					dirX:   a.dirX*20 + randDirX,
-					dirY:   a.dirY*20 + randDirY,
-					sprite: ebiten.NewImage(cWidth, cHeight),
-					width:  cWidth,
-					height: cHeight,
+					sprite : Sprite {
+						x:      float64(a.sprite.x),
+						y:      float64(a.sprite.y),
+						dirX:   a.sprite.dirX*20 + randDirX,
+						dirY:   a.sprite.dirY*20 + randDirY,
+						image: ebiten.NewImage(cWidth, cHeight),
+						width:  cWidth,
+						height: cHeight,
+					},
 				}
-				crystal.sprite.Fill(color.RGBA{209, 60, 219, 200})
+				crystal.sprite.image.Fill(color.RGBA{209, 60, 219, 200})
 				g.crystals = append(g.crystals, crystal)
 			}
 		}
@@ -417,15 +412,17 @@ func (g *Game) SpawnAsteroid() {
 		asteroidHeight := rand.Intn(40) + 10
 
 		asteroid := Asteroid{
-			x:      float64(xLocation),
-			y:      float64(yLocation),
-			dirX:   (playerXDist / asteroidDividend),
-			dirY:   (playerYDist / asteroidDividend),
-			sprite: ebiten.NewImage(asteroidWidth, asteroidHeight),
-			width:  asteroidWidth,
-			height: asteroidHeight,
+			sprite : Sprite{
+				x:      float64(xLocation),
+				y:      float64(yLocation),
+				dirX:   (playerXDist / asteroidDividend),
+				dirY:   (playerYDist / asteroidDividend),
+				image: ebiten.NewImage(asteroidWidth, asteroidHeight),
+				width:  asteroidWidth,
+				height: asteroidHeight,
+			},
 		}
-		asteroid.sprite.Fill(color.RGBA{177, 10, 75, 255})
+		asteroid.sprite.image.Fill(color.RGBA{177, 10, 75, 255})
 		g.asteroids = append(g.asteroids, asteroid)
 	}
 }
@@ -437,15 +434,15 @@ func (g *Game) MoveCrystals() {
 }
 
 func (c *Crystal) Update(p Player) {
-	playerXDist := (p.x - float64(c.x))
-	playerYDist := (p.y - float64(c.y))
+	playerXDist := (p.x - float64(c.sprite.x))
+	playerYDist := (p.y - float64(c.sprite.y))
 	crystalDividend := math.Abs(playerXDist) + math.Abs(playerYDist)/crystalAcceleration
 	forceX := playerXDist / crystalDividend
 	forceY := playerYDist / crystalDividend
-	c.dirX = c.dirX*.9 + forceX
-	c.dirY = c.dirY*.9 + forceY
-	c.x += c.dirX
-	c.y += c.dirY
+	c.sprite.dirX = c.sprite.dirX*.9 + forceX
+	c.sprite.dirY = c.sprite.dirY*.9 + forceY
+	c.sprite.x += c.sprite.dirX
+	c.sprite.y += c.sprite.dirY
 
 	if c.GetBounds().Overlaps(p.GetBounds()) {
 		c.absorbed = true;
@@ -459,8 +456,8 @@ func (g *Game) MoveAsteroids() {
 }
 
 func (a *Asteroid) Update() {
-	a.x += a.dirX
-	a.y += a.dirY
+	a.sprite.x += a.sprite.dirX
+	a.sprite.y += a.sprite.dirY
 }
 
 func (g *Game) MoveLasers() {
@@ -469,21 +466,9 @@ func (g *Game) MoveLasers() {
 	}
 }
 
-func (g *Game) LaserShoot() {
-	currLaser := Laser{
-		x: 0,
-		y: 0,
-	}
-	if len(g.lasers) > 0 {
-		currLaser = g.lasers[0]
-	}
-	currLaser.x += 1
-	currLaser.y += 1
-}
-
 func (l *Laser) Update() {
-	l.x += l.dirX
-	l.y -= l.dirY
+	l.sprite.x += l.sprite.dirX
+	l.sprite.y -= l.sprite.dirY
 }
 
 func (g *Game) registerWithCollisionMap(c Collidable) {
