@@ -45,7 +45,7 @@ type Sprite struct {
 	rad    float64
 	dirX   float64
 	dirY   float64
-	image   *ebiten.Image
+	image  *ebiten.Image
 	width  int
 	height int
 }
@@ -56,12 +56,12 @@ type Laser struct {
 }
 
 type Asteroid struct {
-	sprite Sprite
+	sprite    Sprite
 	destroyed bool
 }
 
 type Crystal struct {
-	sprite Sprite
+	sprite   Sprite
 	absorbed bool
 }
 
@@ -148,14 +148,14 @@ func (g *Game) CleanAsteroids() {
 }
 
 func (g *Game) CleanCrystals() {
- i := 0
- for _, c := range g.crystals {
-	if !c.absorbed {
-		g.crystals[i] = c
-		i++
+	i := 0
+	for _, c := range g.crystals {
+		if !c.absorbed {
+			g.crystals[i] = c
+			i++
+		}
 	}
- }
- g.crystals = g.crystals[:i]
+	g.crystals = g.crystals[:i]
 }
 
 func (g *Game) MovePlayer() {
@@ -182,7 +182,7 @@ func (g *Game) MovePlayer() {
 func (g *Game) PlayerShoot() {
 	if ebiten.IsKeyPressed(ebiten.KeySpace) {
 		laser := Laser{
-			sprite : Sprite {
+			sprite: Sprite{
 				x:      g.player.sprite.x,
 				y:      g.player.sprite.y,
 				rad:    g.player.sprite.rad,
@@ -206,8 +206,7 @@ type Collidable interface {
 }
 
 func (c Crystal) GetBounds() image.Rectangle {
-	c.sprite.GetBounds()
-	return image.Rect(int(c.sprite.x), int(c.sprite.y), int(c.sprite.x+float64(c.sprite.width)), int(c.sprite.y+float64(c.sprite.height)))
+	return c.sprite.GetBounds()
 }
 
 func (p Player) GetBounds() image.Rectangle {
@@ -217,6 +216,10 @@ func (p Player) GetBounds() image.Rectangle {
 func (l Laser) GetBounds() image.Rectangle {
 	// Create a GeoM transformation matrix
 	return l.sprite.GetBounds()
+}
+
+func (a Asteroid) GetBounds() image.Rectangle {
+	return a.sprite.GetBounds()
 }
 
 func (s Sprite) GetBounds() image.Rectangle {
@@ -238,10 +241,6 @@ func (s Sprite) GetBounds() image.Rectangle {
 	maxY := math.Max(math.Max(y0, y1), math.Max(y2, y3))
 
 	return image.Rect(int(minX), int(minY), int(maxX), int(maxY))
-}
-
-func (a Asteroid) GetBounds() image.Rectangle {
-	return a.sprite.GetBounds()
 }
 
 func detectCollision(c1, c2 Collidable) bool {
@@ -349,12 +348,12 @@ func (g *Game) CreateCrystals() {
 				}
 
 				crystal := Crystal{
-					sprite : Sprite {
+					sprite: Sprite{
 						x:      float64(a.sprite.x),
 						y:      float64(a.sprite.y),
 						dirX:   a.sprite.dirX*20 + randDirX,
 						dirY:   a.sprite.dirY*20 + randDirY,
-						image: ebiten.NewImage(cWidth, cHeight),
+						image:  ebiten.NewImage(cWidth, cHeight),
 						width:  cWidth,
 						height: cHeight,
 					},
@@ -399,12 +398,12 @@ func (g *Game) SpawnAsteroid() {
 		asteroidHeight := rand.Intn(40) + 10
 
 		asteroid := Asteroid{
-			sprite : Sprite{
+			sprite: Sprite{
 				x:      float64(xLocation),
 				y:      float64(yLocation),
 				dirX:   (playerXDist / asteroidDividend),
 				dirY:   (playerYDist / asteroidDividend),
-				image: ebiten.NewImage(asteroidWidth, asteroidHeight),
+				image:  ebiten.NewImage(asteroidWidth, asteroidHeight),
 				width:  asteroidWidth,
 				height: asteroidHeight,
 			},
@@ -432,7 +431,7 @@ func (c *Crystal) Update(p Player) {
 	c.sprite.y += c.sprite.dirY
 
 	if c.GetBounds().Overlaps(p.GetBounds()) {
-		c.absorbed = true;
+		c.absorbed = true
 	}
 }
 
@@ -502,7 +501,7 @@ func main() {
 	logger = log.New(file, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ebiten.SetWindowSize(1920, 1080)
 	player := Player{
-		sprite: Sprite {
+		sprite: Sprite{
 			height: 10,
 			width:  10,
 			dirX:   0,
