@@ -6,25 +6,19 @@ import (
 
 type Player struct {
 	character *ebiten.Image
-	rad       float64
-	x         float64
-	y         float64
-	dirX      float64
-	dirY      float64
-	height    int
-	width     int
+	sprite Sprite
 }
 
 func (p *Player) createCharacter() {
-	p.character = ebiten.NewImage(p.height, p.width)
+	p.sprite.image = ebiten.NewImage(p.sprite.height, p.sprite.width)
 }
 
 func (p *Player) Draw(screen *ebiten.Image) {
 	geo := ebiten.GeoM{}
-	geo.Translate(-float64(p.width)/2, -float64(p.height)/2)
-	geo.Rotate(p.rad)
+	geo.Translate(-float64(p.sprite.width)/2, -float64(p.sprite.height)/2)
+	geo.Rotate(p.sprite.rad)
 
-	geo.Translate(p.x, p.y)
+	geo.Translate(p.sprite.x, p.sprite.y)
 	op := &ebiten.DrawImageOptions{GeoM: geo}
 	screen.DrawImage(p.character, op)
 }
