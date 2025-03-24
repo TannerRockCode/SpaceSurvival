@@ -1,6 +1,8 @@
 package main
 
 import (
+	"image"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -12,6 +14,6 @@ func (p *Player) createCharacter() {
 	p.sprite.image = ebiten.NewImage(p.sprite.height, p.sprite.width)
 }
 
-func (p *Player) Draw(screen *ebiten.Image) {
-	p.sprite.Draw(screen)
+func (p Player) GetBounds() image.Rectangle {
+	return p.sprite.GetBounds()
 }
