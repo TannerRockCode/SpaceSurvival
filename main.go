@@ -77,45 +77,33 @@ func (l *Laser) createBeam() {
 	l.sprite.image.Fill(color.RGBA{255, 0, 0, 255})
 }
 
-func (l *Laser) Draw(screen *ebiten.Image) {
-	geo := ebiten.GeoM{}
-	geo.Translate(-float64(l.sprite.width)/2, -float64(l.sprite.height)/2)
-	geo.Rotate(l.sprite.rad)
-	geo.Translate(l.sprite.x, l.sprite.y)
-	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(l.sprite.image, op)
-}
-
 func (g *Game) DrawLasers(screen *ebiten.Image) {
 	for _, l := range g.lasers {
-		l.Draw(screen)
+		l.sprite.Draw(screen)
 	}
-}
-
-func (a *Asteroid) Draw(screen *ebiten.Image) {
-	geo := ebiten.GeoM{}
-	geo.Translate(a.sprite.x, a.sprite.y)
-	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(a.sprite.image, op)
 }
 
 func (g *Game) DrawAsteroids(screen *ebiten.Image) {
 	for _, a := range g.asteroids {
-		a.Draw(screen)
+		a.sprite.Draw(screen)
 	}
-}
-
-func (c *Crystal) Draw(screen *ebiten.Image) {
-	geo := ebiten.GeoM{}
-	geo.Translate(c.sprite.x, c.sprite.y)
-	op := &ebiten.DrawImageOptions{GeoM: geo}
-	screen.DrawImage(c.sprite.image, op)
 }
 
 func (g *Game) DrawCrystals(screen *ebiten.Image) {
 	for _, c := range g.crystals {
-		c.Draw(screen)
+		c.sprite.Draw(screen)
 	}
+}
+
+func (s *Sprite) Draw(screen *ebiten.Image) {
+	geo := ebiten.GeoM{}
+	if(s.rad != 0) {
+		geo.Translate(-float64(s.width)/2, -float64(s.height)/2)
+		geo.Rotate(s.rad)
+	}
+	geo.Translate(s.x, s.y)
+	op := &ebiten.DrawImageOptions{GeoM: geo}
+	screen.DrawImage(s.image, op)
 }
 
 func (l Laser) IsOffScreen() bool {
@@ -331,6 +319,8 @@ func (g *Game) handleCollisions() {
 		}
 	}
 }
+
+
 
 func (g *Game) CreateCrystals() {
 	for _, a := range g.asteroids {
