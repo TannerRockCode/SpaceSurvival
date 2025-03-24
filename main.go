@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -8,9 +9,9 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime/pprof"
 	"time"
 
-	//"runtime/pprof"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
@@ -24,6 +25,8 @@ const (
 )
 
 var logger *log.Logger
+var debugFrameRate bool
+var profileApp bool
 
 var lastEnemySpawn = time.Now()
 
@@ -97,7 +100,7 @@ func (g *Game) DrawCrystals(screen *ebiten.Image) {
 
 func (s *Sprite) Draw(screen *ebiten.Image) {
 	geo := ebiten.GeoM{}
-	if(s.rad != 0) {
+	if s.rad != 0 {
 		geo.Translate(-float64(s.width)/2, -float64(s.height)/2)
 		geo.Rotate(s.rad)
 	}
@@ -143,7 +146,7 @@ func (g *Game) CleanCrystals() {
 			g.crystals[i] = c
 			i++
 		} else {
-			g.score += 1 
+			g.score += 1
 		}
 	}
 	g.crystals = g.crystals[:i]
@@ -320,8 +323,6 @@ func (g *Game) handleCollisions() {
 	}
 }
 
-
-
 func (g *Game) CreateCrystals() {
 	for _, a := range g.asteroids {
 		if a.destroyed {
@@ -468,8 +469,10 @@ func (g *Game) registerWithCollisionMap(c Collidable) {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, fmt.Sprintf("Ticks Per Second: %0.2f", ebiten.ActualTPS()))
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Score: %d", g.score), 10, screenHeight - 30)
+	if debugFrameRate {
+		ebitenutil.DebugPrint(screen, fmt.Sprintf("Ticks Per Second: %0.2f", ebiten.ActualTPS()))
+	}
+	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("Score: %d", g.score), 10, screenHeight-30)
 	g.player.Draw(screen)
 	g.DrawLasers(screen)
 	g.DrawAsteroids(screen)
@@ -480,14 +483,27 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (w, h int) {
 	return screenWidth, screenHeight
 }
 
+func initDefaults() {
+	debugFrameRate = false
+	profileApp = false
+	flag.BoolVar(&debugFrameRate, "dfr", false, "Enable debug mode")
+	flag.BoolVar(&debugFrameRate, "debug-frame-rate", false, "Enable debug mode")
+	flag.BoolVar(&profileApp, "p", false, "Enable profiling")
+	flag.BoolVar(&profileApp, "profile", false, "Enable profiling")
+	flag.Parse()
+}
+
 func main() {
-	// profile, err := os.Create("spacesurvival.prof")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer profile.Close()
-	// pprof.StartCPUProfile(profile)
-	// defer pprof.StopCPUProfile()
+	initDefaults()
+	if profileApp {
+		profile, err := os.Create("spacesurvival.prof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer profile.Close()
+		pprof.StartCPUProfile(profile)
+		defer pprof.StopCPUProfile()
+	}
 
 	file, err := os.OpenFile("spacesurvival.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -523,14 +539,13 @@ func main() {
 		}
 	}
 	if err := ebiten.RunGame(&Game{
-		score: 0, 
-		player: player, 
-		lasers: lasers, 
-		asteroids: asteroids, 
-		crystals: crystals, 
+		score:        0,
+		player:       player,
+		lasers:       lasers,
+		asteroids:    asteroids,
+		crystals:     crystals,
 		collisionMap: cMap,
-	}); 
-	err != nil {
+	}); err != nil {
 		log.Fatal(err)
 	}
 }
